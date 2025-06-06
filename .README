@@ -1,0 +1,1 @@
+Open video calls is a small, personal project intended to stream video data between clients (written in Python) and a server (written in Rust).
