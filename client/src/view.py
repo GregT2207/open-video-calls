@@ -13,7 +13,6 @@ class View:
         self.call = call
         self.cam = cv2.VideoCapture(0)
         self.set_cam_frame()
-        self.cam_frame = self.set_cam_frame()
 
         cv2.namedWindow(self.WINDOW_NAME, cv2.WINDOW_NORMAL)
         cv2.resizeWindow(self.WINDOW_NAME, self.WINDOW_WIDTH, self.WINDOW_HEIGHT)
@@ -21,7 +20,7 @@ class View:
     def start(self) -> bool:
         print("Creating new view")
 
-        while True:
+        while self.call.running:
             self.set_cam_frame()
 
             user_frames = [self.cam_frame, *self.call.connection.frames]

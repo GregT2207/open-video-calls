@@ -8,6 +8,7 @@ from view import View
 
 class Call:
     def __init__(self):
+        self.running = True
         self.view = View(self)
         self.connection = Connection(self)
 

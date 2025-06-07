@@ -28,7 +28,7 @@ class Connection:
     def start_sending(self):
         print("Beginning transmission of data")
 
-        while True:
+        while self.call.running:
             self.socket.sendto(b"TEST", (self.SERVER_ADDRESS, self.SERVER_PORT))
             time.sleep(1 / self.SEND_RATE)
 
@@ -36,6 +36,6 @@ class Connection:
         print("Beginning receipt of data")
 
         self.socket.bind((self.SERVER_ADDRESS, self.SERVER_PORT))
-        while True:
+        while self.call.running:
             data, address = socket.recvfrom(1024)
             print(f"Received message {data}")
