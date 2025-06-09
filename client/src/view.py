@@ -1,3 +1,4 @@
+import datetime
 import math
 
 import cv2
@@ -12,7 +13,6 @@ class View:
     def __init__(self, call):
         self.call = call
         self.cam = cv2.VideoCapture(0)
-        self.set_cam_frame()
 
         cv2.namedWindow(self.WINDOW_NAME, cv2.WINDOW_NORMAL)
         cv2.resizeWindow(self.WINDOW_NAME, self.WINDOW_WIDTH, self.WINDOW_HEIGHT)
@@ -21,7 +21,7 @@ class View:
         print("Creating new view")
 
         while self.call.running:
-            self.set_cam_frame()
+            self.read_camera()
 
             user_frames = [self.cam_frame, *self.call.connection.frames]
 
@@ -56,10 +56,12 @@ class View:
 
         self.clean_up()
 
-    def set_cam_frame(self):
+    def read_camera(self):
         ret, self.cam_frame = self.cam.read()
         if not ret:
             print("Failed to read from camera")
+
+        self.call.connection.send_frame(self.cam_frame, datetime.datetime.now())
 
     def clean_up(self):
         print("Cleaning up view resources")

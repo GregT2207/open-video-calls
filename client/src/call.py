@@ -15,7 +15,9 @@ class Call:
     def start(self):
         print("Joining call")
 
-        connection_thread = threading.Thread(target=self.connection.start, daemon=True)
+        connection_thread = threading.Thread(
+            name="connection", target=self.connection.start, daemon=True
+        )
         connection_thread.start()
 
         self.view.start()

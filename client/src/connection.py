@@ -1,41 +1,76 @@
+import datetime
+import random
 import socket
 import threading
-import time
 
 import numpy as np
+from rtp import RTP
 
 
 class Connection:
     SERVER_ADDRESS = "127.0.0.1"
     SERVER_PORT = 5000
-    SEND_RATE = 30
+    RTP_TICK_RATE = 90_000
 
     def __init__(self, call):
         self.call = call
-        self.frames: list[np.ndarray] = []
+
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.socket.setblocking(False)
+
+        self.seq = random.getrandbits(16)
+        self.timestamp_base = random.getrandbits(32)
+        self.timestamp_initial = datetime.datetime.now()
 
     def start(self):
         print("Establishing connection with server")
 
-        sending_thread = threading.Thread(target=self.start_sending)
-        receiving_thread = threading.Thread(target=self.start_receiving)
-
-        sending_thread.start()
+        receiving_thread = threading.Thread(
+            name="connection_receiving", target=self.start_receiving_frames
+        )
         receiving_thread.start()
 
-    def start_sending(self):
-        print("Beginning transmission of data")
+    def send_frame(self, frame: np.ndarray, timestamp: int):
+        compressed_frame = self.compress_frame(frame)
+        fragments = self.get_fragments(compressed_frame)
 
-        while self.call.running:
-            self.socket.sendto(b"TEST", (self.SERVER_ADDRESS, self.SERVER_PORT))
-            time.sleep(1 / self.SEND_RATE)
+        for fragment in fragments:
+            self.transmit_rtp_packet(bytearray(fragment.tobytes()), timestamp)
 
-    def start_receiving(self):
+    def compress_frame(self, frame: np.ndarray) -> np.ndarray:
+        # Determine bit-rate based on current bandwidth
+        return frame
+
+    def get_fragments(self, frame: np.ndarray) -> list[np.ndarray]:
+        return [frame]
+
+    def transmit_rtp_packet(self, payload: bytearray, timestamp: int):
+        rtp_packet = RTP(
+            version=2,
+            padding=False,
+            marker=False,
+            sequenceNumber=self.seq,
+            timestamp=self.get_timestamp(timestamp),
+            ssrc=random.getrandbits(32),
+        )
+        rtp_packet.payload = payload
+
+        self.socket.sendto(
+            rtp_packet.toBytearray(), (self.SERVER_ADDRESS, self.SERVER_PORT)
+        )
+
+        self.seq = (self.seq + 1) & 0xFFFF
+
+    def get_timestamp(self, timestamp: datetime.datetime) -> int:
+        delta = timestamp - self.timestamp_initial
+        ticks = int(delta.total_seconds() * self.RTP_TICK_RATE)
+
+        return ticks & 0xFFFFFFFF
+
+    def start_receiving_frames(self):
         print("Beginning receipt of data")
 
-        self.socket.bind((self.SERVER_ADDRESS, self.SERVER_PORT))
-        while self.call.running:
-            data, address = socket.recvfrom(1024)
-            print(f"Received message {data}")
+        # self.socket.bind((self.SERVER_ADDRESS, self.SERVER_PORT))
+        # while self.call.running:
+        #     data, address = socket.recvfrom(1024)
+        #     print(f"Received message {data}")
