@@ -1,9 +1,9 @@
 import threading
 
 import cv2
+from view import View
 
 from connection import Connection
-from view import View
 
 
 class Call:
