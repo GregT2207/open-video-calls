@@ -20,14 +20,17 @@ class Connection:
         self.call = call
 
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        self.socket.setblocking(False)
 
         self.seq = random.getrandbits(16)
-        self.timestamp_base = random.getrandbits(32)
         self.timestamp_initial = datetime.datetime.now()
+        self.timestamp_base = random.getrandbits(32)
+        self.connection_id = random.getrandbits(32)
 
     def start(self):
-        print("Establishing connection with server")
+        self.socket.bind(("", 0))
+        print(
+            f"Communicating with {self.SERVER_ADDRESS}:{self.SERVER_PORT} through local port {self.socket.getsockname()[1]}"
+        )
 
         receiving_thread = threading.Thread(
             name="connection_receiving", target=self.start_receiving_frames
@@ -54,18 +57,20 @@ class Connection:
             frame,
             [int(cv2.IMWRITE_JPEG_QUALITY), self.DEFAULT_COMPRESSED_QUALITY],
         )
-        print(
-            f"Compressed frame from {frame.size * frame.itemsize / 1000} KB to {compressed_frame.size * compressed_frame.itemsize / 1000} KB"
-        )
+        if self.call.debug:
+            print(
+                f"Compressed frame from {frame.size * frame.itemsize / 1000} KB to {compressed_frame.size * compressed_frame.itemsize / 1000} KB"
+            )
 
         return compressed_frame
 
     def get_fragments(self, frame: np.ndarray) -> np.ndarray:
         frame_bytes = frame.size * frame.itemsize
         fragment_count = math.ceil(frame_bytes / self.RTP_MAX_PAYLOAD_BYTES)
-        print(
-            f"Splitting {frame_bytes / 1000} KB frame into {fragment_count} fragments"
-        )
+        if self.call.debug:
+            print(
+                f"Splitting {frame_bytes / 1000} KB frame into {fragment_count} fragments"
+            )
 
         return np.array_split(frame, fragment_count, axis=0)
 
@@ -80,7 +85,8 @@ class Connection:
         )
 
         rtp_packet.payload = payload
-        print(f"Attached {len(payload)} B payload to RTP packet")
+        if self.call.debug:
+            print(f"Attached {len(payload)} B payload to RTP packet")
 
         self.socket.sendto(
             rtp_packet.toBytearray(), (self.SERVER_ADDRESS, self.SERVER_PORT)
@@ -95,9 +101,12 @@ class Connection:
         return ticks & 0xFFFFFFFF
 
     def start_receiving_frames(self):
-        print("Beginning receipt of data")
+        while self.call.running:
+            data, address = self.socket.recvfrom(1500)
+            if address[0] != self.SERVER_ADDRESS:
+                print(f"Ignoring data received from unexpected address: {address}")
+                continue
 
-        # self.socket.bind((self.SERVER_ADDRESS, self.SERVER_PORT))
-        # while self.call.running:
-        #     data, address = socket.recvfrom(1024)
-        #     print(f"Received message {data}")
+            rtp_packet = RTP().fromBytearray(data)
+
+            self.call.view.connection_frames = list(rtp_packet.payload)

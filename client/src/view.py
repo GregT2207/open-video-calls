@@ -15,6 +15,7 @@ class View:
         self.call = call
         self.cam = cv2.VideoCapture(0)
         self.cam_frame = np.zeros((self.WINDOW_HEIGHT, self.WINDOW_WIDTH, 3))
+        self.connection_frames: list[np.ndarray] = list()
 
         cv2.namedWindow(self.WINDOW_NAME, cv2.WINDOW_NORMAL)
         cv2.resizeWindow(self.WINDOW_NAME, self.WINDOW_WIDTH, self.WINDOW_HEIGHT)
@@ -38,7 +39,7 @@ class View:
         self.call.connection.send_frame(self.cam_frame, datetime.datetime.now())
 
     def draw(self):
-        user_frames = [self.cam_frame]
+        user_frames = [self.cam_frame, *self.connection_frames]
 
         grid_len = math.ceil(math.sqrt(len(user_frames)))
 
