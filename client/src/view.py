@@ -23,7 +23,7 @@ class View:
         while self.call.running:
             self.read_camera()
 
-            user_frames = [self.cam_frame, *self.call.connection.frames]
+            user_frames = [self.cam_frame]
 
             grid_len = math.ceil(math.sqrt(len(user_frames)))
 
