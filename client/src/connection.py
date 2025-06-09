@@ -33,7 +33,7 @@ class Connection:
         )
 
         receiving_thread = threading.Thread(
-            name="connection_receiving", target=self.start_receiving_frames
+            name="connection_receiving", target=self.start_receiving_frames, daemon=True
         )
         receiving_thread.start()
 

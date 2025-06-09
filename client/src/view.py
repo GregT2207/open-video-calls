@@ -28,7 +28,7 @@ class View:
             self.draw()
 
             if cv2.waitKey(1) & 0xFF == 27:  # esc
-                self.end_call()
+                self.clean_up()
 
     def read(self):
         ret, self.cam_frame = self.cam.read()
@@ -67,7 +67,7 @@ class View:
 
         cv2.imshow(self.WINDOW_NAME, grid)
 
-    def end_call(self):
+    def clean_up(self):
         print("Cleaning up view resources and ending call")
 
         self.cam.release()
