@@ -112,7 +112,7 @@ class Connection:
                 print(f"Ignoring data received from unexpected address: {address}")
                 continue
 
-            rtp_packet = RTP().fromBytearray(data)
+            rtp_packet = RTP().fromBytes(data)
 
             if rtp_packet.marker:
                 assemble_frame_thread = threading.Thread(
@@ -123,6 +123,8 @@ class Connection:
                 )
                 assemble_frame_thread.start()
 
+            if rtp_packet.ssrc not in self.buffers:
+                self.buffers[rtp_packet.ssrc] = {}
             self.buffers[rtp_packet.ssrc][rtp_packet.sequenceNumber] = rtp_packet
 
     def assemble_frame(self, ssrc: int):
