@@ -23,7 +23,7 @@ class Connection:
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
         self.buffers: dict[int, dict[int, RTP]] = {}  # [ssrc: [seq: packet]]
-        self.ssrc = (random.getrandbits(32),)
+        self.ssrc = random.getrandbits(32)
         self.seq = random.getrandbits(16)
         self.timestamp_initial = datetime.datetime.now()
         self.timestamp_base = random.getrandbits(32)
