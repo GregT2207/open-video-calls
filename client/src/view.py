@@ -39,7 +39,10 @@ class View:
         self.call.connection.send_frame(self.cam_frame, datetime.datetime.now())
 
     def draw(self):
-        user_frames = [self.cam_frame, *self.connection_frames]
+        user_frames: list[np.ndarray] = [
+            self.cam_frame,
+            *self.connection_frames.values(),
+        ]
 
         grid_len = math.ceil(math.sqrt(len(user_frames)))
 
@@ -48,7 +51,10 @@ class View:
         view_height = int(self.WINDOW_HEIGHT / grid_len)
 
         col, row = 0, 0
-        for index, user_view in enumerate(user_frames):
+        for _, user_view in enumerate(user_frames):
+            if user_view is None or user_view.size == 0:
+                continue
+
             user_view = cv2.resize(
                 user_view,
                 (view_width, view_height),
