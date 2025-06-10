@@ -40,8 +40,9 @@ fn remove_old_connections(connections: &mut HashMap<SocketAddr, SystemTime>) {
     let expired: Vec<SocketAddr> = connections
         .iter()
         .filter_map(|(address, last_received)| {
-            if now.duration_since(*last_received).unwrap()
-                > Duration::from_secs(CONNECTION_EXPIRY_TIME)
+            if *last_received > now
+                && now.duration_since(*last_received).unwrap()
+                    > Duration::from_secs(CONNECTION_EXPIRY_TIME)
             {
                 Some(*address)
             } else {
