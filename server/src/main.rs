@@ -20,7 +20,7 @@ fn main() -> std::io::Result<()> {
         let data = &mut buffer[..size];
 
         if !connections.contains_key(&src) {
-            print!("Address {} has joined the connections", src);
+            println!("Address {} has joined the connections", src);
         }
         connections.insert(src, SystemTime::now());
 
@@ -51,7 +51,7 @@ fn remove_old_connections(connections: &mut HashMap<SocketAddr, SystemTime>) {
         .collect();
 
     for address in expired {
-        print!("Removing address {} from the connections", address);
+        println!("Removing address {} from the connections", address);
         connections.remove(&address);
     }
 }
