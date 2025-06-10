@@ -128,8 +128,10 @@ class Connection:
             self.buffers[rtp_packet.ssrc][rtp_packet.sequenceNumber] = rtp_packet
 
     def assemble_frame(self, ssrc: int):
-        frame = np.concatenate(*self.get_frame_packets(ssrc))
-        self.call.view.connection_frames[ssrc] = frame
+        frame = np.concatenate(self.get_frame_packets(ssrc), axis=0)
+        decoded_frame = cv2.imdecode(frame, cv2.IMREAD_COLOR)
+
+        self.call.view.connection_frames[ssrc] = decoded_frame
 
     def get_frame_packets(self, ssrc: int) -> list[np.ndarray]:
         data: list[np.ndarray] = list()
@@ -138,7 +140,7 @@ class Connection:
         for _ in range(5):
             while next_seq in self.buffers[ssrc]:
                 next_packet = self.buffers[ssrc].pop(next_seq)
-                data.append(next_packet.payload.decode())
+                data.append(np.frombuffer(next_packet.payload, dtype=np.uint8))
 
                 if next_packet.marker:
                     return data
