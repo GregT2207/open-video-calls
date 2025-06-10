@@ -3,6 +3,7 @@ import math
 import random
 import socket
 import threading
+import time
 
 import cv2
 import numpy as np
@@ -21,6 +22,8 @@ class Connection:
 
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
+        self.buffers: dict[int, dict[int, RTP]] = {}  # [ssrc: [seq: packet]]
+        self.ssrc = (random.getrandbits(32),)
         self.seq = random.getrandbits(16)
         self.timestamp_initial = datetime.datetime.now()
         self.timestamp_base = random.getrandbits(32)
@@ -32,10 +35,12 @@ class Connection:
             f"Communicating with {self.SERVER_ADDRESS}:{self.SERVER_PORT} through local port {self.socket.getsockname()[1]}"
         )
 
-        receiving_thread = threading.Thread(
-            name="connection_receiving", target=self.start_receiving_frames, daemon=True
+        receive_packets_thread = threading.Thread(
+            name="connection_receive_packets",
+            target=self.receive_packets,
+            daemon=True,
         )
-        receiving_thread.start()
+        receive_packets_thread.start()
 
     def send_frame(self, frame: np.ndarray, timestamp: int):
         if frame.size == 0:
@@ -81,7 +86,7 @@ class Connection:
             marker=marker,
             sequenceNumber=self.seq,
             timestamp=self.get_timestamp(timestamp),
-            ssrc=random.getrandbits(32),
+            ssrc=self.ssrc,
         )
 
         rtp_packet.payload = payload
@@ -100,7 +105,7 @@ class Connection:
 
         return ticks & 0xFFFFFFFF
 
-    def start_receiving_frames(self):
+    def receive_packets(self):
         while self.call.running:
             data, address = self.socket.recvfrom(1500)
             if address[0] != self.SERVER_ADDRESS:
@@ -109,4 +114,35 @@ class Connection:
 
             rtp_packet = RTP().fromBytearray(data)
 
-            self.call.view.connection_frames = list(rtp_packet.payload)
+            if rtp_packet.marker:
+                assemble_frame_thread = threading.Thread(
+                    name="connection_assemble_frame",
+                    target=self.assemble_frame,
+                    args=(rtp_packet.ssrc),
+                    daemon=True,
+                )
+                assemble_frame_thread.start()
+
+            self.buffers[rtp_packet.ssrc][rtp_packet.sequenceNumber] = rtp_packet
+
+    def assemble_frame(self, ssrc: int):
+        frame = np.concatenate(*self.get_frame_packets(ssrc))
+        self.call.view.connection_frames[ssrc] = frame
+
+    def get_frame_packets(self, ssrc: int) -> list[np.ndarray]:
+        data: list[np.ndarray] = list()
+
+        next_seq = next(iter(self.buffers[ssrc]))
+        for _ in range(5):
+            while next_seq in self.buffers[ssrc]:
+                next_packet = self.buffers[ssrc].pop(next_seq)
+                data.append(next_packet.payload.decode())
+
+                if next_packet.marker:
+                    return data
+
+                next_seq += 1
+
+            time.sleep(0.1)
+
+        return data

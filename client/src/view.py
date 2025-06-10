@@ -15,7 +15,7 @@ class View:
         self.call = call
         self.cam = cv2.VideoCapture(0)
         self.cam_frame = np.zeros((self.WINDOW_HEIGHT, self.WINDOW_WIDTH, 3))
-        self.connection_frames: list[np.ndarray] = list()
+        self.connection_frames: dict[int, np.ndarray] = {}
 
         cv2.namedWindow(self.WINDOW_NAME, cv2.WINDOW_NORMAL)
         cv2.resizeWindow(self.WINDOW_NAME, self.WINDOW_WIDTH, self.WINDOW_HEIGHT)
