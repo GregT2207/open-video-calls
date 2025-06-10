@@ -19,10 +19,10 @@ fn main() -> std::io::Result<()> {
         let (size, src) = socket.recv_from(&mut buffer)?;
         let data = &mut buffer[..size];
 
-        connections
-            .entry(src)
-            .and_modify(|t| *t = SystemTime::now())
-            .or_insert(SystemTime::now());
+        if !connections.contains_key(&src) {
+            print!("Address {} has joined the connections", src);
+        }
+        connections.insert(src, SystemTime::now());
 
         for (address, _) in &connections {
             if address == &src {
@@ -51,6 +51,7 @@ fn remove_old_connections(connections: &mut HashMap<SocketAddr, SystemTime>) {
         .collect();
 
     for address in expired {
+        print!("Removing address {} from the connections", address);
         connections.remove(&address);
     }
 }
