@@ -118,7 +118,7 @@ class Connection:
                 assemble_frame_thread = threading.Thread(
                     name="connection_assemble_frame",
                     target=self.assemble_frame,
-                    args=(rtp_packet.ssrc),
+                    args=(rtp_packet.ssrc,),
                     daemon=True,
                 )
                 assemble_frame_thread.start()
