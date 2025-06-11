@@ -1,6 +1,7 @@
 import datetime
 import math
 import threading
+import time
 
 import cv2
 import numpy as np
@@ -10,6 +11,7 @@ class View:
     WINDOW_NAME = "Chat"
     WINDOW_WIDTH = 1280
     WINDOW_HEIGHT = 720
+    CONNECTION_EXPIRY_SECONDS = 5
 
     def __init__(self, call):
         self.call = call
@@ -22,6 +24,13 @@ class View:
 
     def start(self) -> bool:
         print("Creating new view")
+
+        remove_stale_frames_thread = threading.Thread(
+            name="remove_stale_frames_thread",
+            target=self.remove_stale_frames,
+            daemon=True,
+        )
+        remove_stale_frames_thread.start()
 
         while self.call.running:
             self.read()
@@ -72,6 +81,19 @@ class View:
                 col += 1
 
         cv2.imshow(self.WINDOW_NAME, grid)
+
+    def remove_stale_frames(self):
+        while self.call.running:
+            indexes_to_remove = list()
+
+            prev_frames = self.connection_frames
+            time.sleep(self.CONNECTION_EXPIRY_SECONDS)
+            for index, frame in self.connection_frames.items():
+                if frame.all() == prev_frames[index].all():
+                    indexes_to_remove.append(index)
+
+            for index in indexes_to_remove:
+                del self.connection_frames[index]
 
     def clean_up(self):
         print("Cleaning up view resources and ending call")
