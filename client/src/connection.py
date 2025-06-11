@@ -4,6 +4,7 @@ import random
 import socket
 import threading
 import time
+from collections import deque
 
 import cv2
 import numpy as np
@@ -22,12 +23,17 @@ class Connection:
 
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
-        self.buffers: dict[int, dict[int, RTP]] = {}  # [ssrc: [seq: packet]]
         self.ssrc = random.getrandbits(32)
         self.seq = random.getrandbits(16)
         self.timestamp_initial = datetime.datetime.now()
         self.timestamp_base = random.getrandbits(32)
         self.connection_id = random.getrandbits(32)
+
+        self.packet_buffers: dict[int, dict[int, RTP]] = {}  # [ssrc: [seq: packet]]
+        self.frame_buffers: dict[int, deque[tuple[int, np.ndarray]]] = (
+            {}
+        )  # [ssrc: (timestamp, queue[frame])]
+        self.latest_timestamps: dict[int, int] = {}  # [ssrc: timestamp]
 
     def start(self):
         self.socket.bind(("", 0))
@@ -41,6 +47,13 @@ class Connection:
             daemon=True,
         )
         receive_packets_thread.start()
+
+        consume_frame_buffer_thread = threading.Thread(
+            name="connection_consume_frame_buffer",
+            target=self.consume_frame_buffer,
+            daemon=True,
+        )
+        consume_frame_buffer_thread.start()
 
     def send_frame(self, frame: np.ndarray, timestamp: int):
         if frame.size == 0:
@@ -123,30 +136,54 @@ class Connection:
                 )
                 assemble_frame_thread.start()
 
-            if rtp_packet.ssrc not in self.buffers:
-                self.buffers[rtp_packet.ssrc] = {}
-            self.buffers[rtp_packet.ssrc][rtp_packet.sequenceNumber] = rtp_packet
+            if rtp_packet.ssrc not in self.packet_buffers:
+                self.packet_buffers[rtp_packet.ssrc] = {}
+            self.packet_buffers[rtp_packet.ssrc][rtp_packet.sequenceNumber] = rtp_packet
 
     def assemble_frame(self, ssrc: int):
-        frame = np.concatenate(self.get_frame_packets(ssrc), axis=0)
+        timestamp, packets = self.get_frame_packets(ssrc)
+        frame = np.concatenate(packets, axis=0)
         decoded_frame = cv2.imdecode(frame, cv2.IMREAD_COLOR)
 
-        self.call.view.connection_frames[ssrc] = decoded_frame
+        if ssrc not in self.frame_buffers:
+            self.frame_buffers[ssrc] = deque()
+        self.frame_buffers[ssrc].append((timestamp, decoded_frame))
 
-    def get_frame_packets(self, ssrc: int) -> list[np.ndarray]:
+    def get_frame_packets(self, ssrc: int) -> tuple[int, list[np.ndarray]]:
         data: list[np.ndarray] = list()
 
-        next_seq = next(iter(self.buffers[ssrc]))
+        timestamp = 0
+        next_seq = next(iter(self.packet_buffers[ssrc]))
         for _ in range(5):
-            while next_seq in self.buffers[ssrc]:
-                next_packet = self.buffers[ssrc].pop(next_seq)
+            while next_seq in self.packet_buffers[ssrc]:
+                next_packet = self.packet_buffers[ssrc].pop(next_seq)
                 data.append(np.frombuffer(next_packet.payload, dtype=np.uint8))
 
                 if next_packet.marker:
-                    return data
+                    timestamp = next_packet.timestamp
+                    return (timestamp, data)
 
                 next_seq += 1
 
             time.sleep(0.1)
 
-        return data
+        return (timestamp, data)
+
+    def consume_frame_buffer(self):
+        while self.call.running:
+            for ssrc, buffer in self.frame_buffers.items():
+                if len(buffer) == 0:
+                    continue
+
+                timestamp, frame = buffer.popleft()
+
+                if ssrc not in self.latest_timestamps:
+                    self.latest_timestamps[ssrc] = 0
+
+                # Drop any late frames
+                if timestamp < self.latest_timestamps[ssrc]:
+                    continue
+
+                self.call.view.connection_frames[ssrc] = frame
+
+            time.sleep(0.033)
