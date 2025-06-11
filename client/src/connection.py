@@ -17,6 +17,7 @@ class Connection:
     DEFAULT_COMPRESSED_QUALITY = 90
     RTP_MAX_PAYLOAD_BYTES = 1200
     RTP_TICK_RATE = 90_000
+    CONSUME_FPS = 30
 
     def __init__(self, call):
         self.call = call
@@ -170,7 +171,15 @@ class Connection:
         return (timestamp, data)
 
     def consume_frame_buffer(self):
+        next_frame_time = datetime.datetime.now()
+
         while self.call.running:
+            time_to_next_frame = (
+                next_frame_time - datetime.datetime.now()
+            ).total_seconds()
+            if time_to_next_frame > 0:
+                time.sleep(time_to_next_frame)
+
             for ssrc, buffer in self.frame_buffers.items():
                 if len(buffer) == 0:
                     continue
@@ -186,4 +195,4 @@ class Connection:
 
                 self.call.view.connection_frames[ssrc] = frame
 
-            time.sleep(0.033)
+            next_frame_time += datetime.timedelta(seconds=(1 / self.CONSUME_FPS))
