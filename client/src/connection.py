@@ -110,6 +110,7 @@ class Connection:
                 self.SMOOTHING_COMPRESSION_FACTOR,
             )
 
+            self.packets_per_second = new_packets_per_second
             self.compression_quality = new_compression_quality
 
     def compress_frame(self, frame: np.ndarray) -> np.ndarray:
