@@ -14,15 +14,22 @@ from rtp import RTP
 class Connection:
     SERVER_ADDRESS = "127.0.0.1"
     SERVER_PORT = 5000
-    DEFAULT_COMPRESSED_QUALITY = 90
+    DEFAULT_COMPRESSION_QUALITY = 80
+    MIN_COMPRESSION_QUALITY = 20
+    MAX_COMPRESSION_QUALITY = 100
+    SMOOTHING_COMPRESSION_FACTOR = 0.1
     RTP_MAX_PAYLOAD_BYTES = 1200
     RTP_TICK_RATE = 90_000
     CONSUME_FPS = 30
+    ADAPT_FRAME_QUALITY_FREQUENCY_SECONDS = 1
 
     def __init__(self, call):
         self.call = call
 
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.packets_received = 0
+        self.compression_quality = self.DEFAULT_COMPRESSION_QUALITY
+        self.packets_per_second = 0
 
         self.ssrc = random.getrandbits(32)
         self.seq = random.getrandbits(16)
@@ -56,6 +63,13 @@ class Connection:
         )
         consume_frame_buffer_thread.start()
 
+        adapt_frame_quality_thread = threading.Thread(
+            name="connection_adapt_frame_quality",
+            target=self.adapt_frame_quality,
+            daemon=True,
+        )
+        adapt_frame_quality_thread.start()
+
     def send_frame(self, frame: np.ndarray, timestamp: int):
         if frame.size == 0:
             return
@@ -68,13 +82,41 @@ class Connection:
                 bytearray(fragment.tobytes()), timestamp, index == (len(fragments) - 1)
             )
 
-    def compress_frame(self, frame: np.ndarray) -> np.ndarray:
-        # Determine quality based on current bandwidth
+    def lerp(a: float, b: float, t: float):
+        t = max(0.0, min(1.0, t))
+        result = a + (b - a) * t
 
+        return result
+
+    def adapt_frame_quality(self):
+        while self.call.running:
+            packets_received_a = self.packets_received
+            time.sleep(self.ADAPT_FRAME_QUALITY_FREQUENCY_SECONDS)
+            packets_received_b = self.packets_received
+
+            new_packets_per_second = (
+                packets_received_b - packets_received_a
+            ) / self.ADAPT_FRAME_QUALITY_FREQUENCY_SECONDS
+
+            target_compression_quality = (
+                self.MAX_COMPRESSION_QUALITY
+                if new_packets_per_second >= self.packets_per_second
+                else self.MIN_COMPRESSION_QUALITY
+            )
+
+            new_compression_quality = Connection.lerp(
+                self.compression_quality,
+                target_compression_quality,
+                self.SMOOTHING_COMPRESSION_FACTOR,
+            )
+
+            self.compression_quality = new_compression_quality
+
+    def compress_frame(self, frame: np.ndarray) -> np.ndarray:
         _, compressed_frame = cv2.imencode(
             ".jpg",
             frame,
-            [int(cv2.IMWRITE_JPEG_QUALITY), self.DEFAULT_COMPRESSED_QUALITY],
+            [int(cv2.IMWRITE_JPEG_QUALITY), round(self.compression_quality)],
         )
         if self.call.debug:
             print(
@@ -122,6 +164,8 @@ class Connection:
     def receive_packets(self):
         while self.call.running:
             data, address = self.socket.recvfrom(1500)
+            self.packets_received += 1
+
             if address[0] != self.SERVER_ADDRESS:
                 print(f"Ignoring data received from unexpected address: {address}")
                 continue
