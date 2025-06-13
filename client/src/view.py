@@ -87,11 +87,11 @@ class View:
             indexes_to_remove = list()
 
             prev_frames = self.connection_frames
-            if prev_frames is None or len(prev_frames) == 0:
-                continue
-
             time.sleep(self.CONNECTION_EXPIRY_SECONDS)
             for index, frame in self.connection_frames.items():
+                if prev_frames[index] is None:
+                    continue
+
                 if frame.all() == prev_frames[index].all():
                     indexes_to_remove.append(index)
 
