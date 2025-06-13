@@ -89,7 +89,7 @@ class View:
             prev_frames = self.connection_frames
             time.sleep(self.CONNECTION_EXPIRY_SECONDS)
             for index, frame in self.connection_frames.items():
-                if prev_frames[index] is None:
+                if frame is None or prev_frames[index] is None:
                     continue
 
                 if frame.all() == prev_frames[index].all():
