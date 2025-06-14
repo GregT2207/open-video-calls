@@ -21,6 +21,7 @@ class View:
 
         cv2.namedWindow(self.WINDOW_NAME, cv2.WINDOW_NORMAL)
         cv2.resizeWindow(self.WINDOW_NAME, self.WINDOW_WIDTH, self.WINDOW_HEIGHT)
+        cv2.moveWindow(self.WINDOW_NAME, 0, 0)
 
     def start(self) -> bool:
         print("Creating new view")
@@ -86,13 +87,10 @@ class View:
         while self.call.running:
             indexes_to_remove = list()
 
-            prev_frames = self.connection_frames
+            prev_frames = self.connection_frames.copy()
             time.sleep(self.CONNECTION_EXPIRY_SECONDS)
             for index, frame in self.connection_frames.items():
-                if frame is None or prev_frames[index] is None:
-                    continue
-
-                if frame.all() == prev_frames[index].all():
+                if np.array_equal(frame, prev_frames[index]):
                     indexes_to_remove.append(index)
 
             for index in indexes_to_remove:

@@ -188,8 +188,11 @@ class Connection:
 
     def assemble_frame(self, ssrc: int):
         timestamp, packets = self.get_frame_packets(ssrc)
+
         frame = np.concatenate(packets, axis=0)
         decoded_frame = cv2.imdecode(frame, cv2.IMREAD_COLOR)
+        if decoded_frame is None:
+            return
 
         if ssrc not in self.frame_buffers:
             self.frame_buffers[ssrc] = deque()
