@@ -90,7 +90,7 @@ class View:
             prev_frames = self.connection_frames.copy()
             time.sleep(self.CONNECTION_EXPIRY_SECONDS)
             for index, frame in self.connection_frames.items():
-                if np.array_equal(frame, prev_frames[index]):
+                if index in prev_frames and np.array_equal(frame, prev_frames[index]):
                     indexes_to_remove.append(index)
 
             for index in indexes_to_remove:
