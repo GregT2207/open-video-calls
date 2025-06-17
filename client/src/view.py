@@ -49,6 +49,14 @@ class View:
         self.call.connection.send_frame(self.cam_frame, datetime.datetime.now())
 
     def draw(self):
+        image = np.zeros((self.WINDOW_HEIGHT, self.WINDOW_WIDTH, 3), dtype=np.uint8)
+
+        image = self.draw_grid(image)
+        image = self.draw_analytics(image)
+
+        cv2.imshow(self.WINDOW_NAME, image)
+
+    def draw_grid(self, image: np.ndarray) -> np.ndarray:
         user_frames: list[np.ndarray] = [
             self.cam_frame,
             *self.connection_frames.values(),
@@ -56,7 +64,6 @@ class View:
 
         grid_len = math.ceil(math.sqrt(len(user_frames)))
 
-        grid = np.zeros((self.WINDOW_HEIGHT, self.WINDOW_WIDTH, 3), dtype=np.uint8)
         view_width = int(self.WINDOW_WIDTH / grid_len)
         view_height = int(self.WINDOW_HEIGHT / grid_len)
 
@@ -73,7 +80,7 @@ class View:
             y = view_height * row
             x = view_width * col
 
-            grid[y : y + view_height, x : x + view_width] = user_view
+            image[y : y + view_height, x : x + view_width] = user_view
 
             if col == grid_len - 1:
                 col = 0
@@ -81,7 +88,32 @@ class View:
             else:
                 col += 1
 
-        cv2.imshow(self.WINDOW_NAME, grid)
+        return image
+
+    def draw_analytics(self, image: np.ndarray) -> np.ndarray:
+        image = self.draw_analytics_text(image, "Test 1", 0)
+        image = self.draw_analytics_text(image, "Test 2", 1)
+        image = self.draw_analytics_text(image, "Test 3", 2)
+
+        return image
+
+    def draw_analytics_text(
+        self, image: np.ndarray, text: str, line: int
+    ) -> np.ndarray:
+        indent = (20, 40)
+        line_gap = 25
+
+        return cv2.putText(
+            image,
+            text,
+            (indent[0], indent[1] + (line_gap * line)),
+            cv2.QT_FONT_NORMAL,
+            1,
+            (0, 255, 0),
+            2,
+            cv2.LINE_AA,
+            False,
+        )
 
     def remove_stale_frames(self):
         while self.call.running:
