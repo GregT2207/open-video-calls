@@ -92,8 +92,11 @@ class View:
 
     def draw_analytics(self, image: np.ndarray) -> np.ndarray:
         image = self.draw_analytics_text(image, self.get_bitrate_text(), 0)
-        image = self.draw_analytics_text(image, "Test 2", 1)
-        image = self.draw_analytics_text(image, "Test 3", 2)
+        image = self.draw_analytics_text(
+            image,
+            str(round(self.call.connection.compression_quality)) + "% image quality",
+            1,
+        )
 
         return image
 
@@ -113,7 +116,7 @@ class View:
         self, image: np.ndarray, text: str, line: int
     ) -> np.ndarray:
         indent = (20, 40)
-        line_gap = 25
+        line_gap = 30
 
         return cv2.putText(
             image,
