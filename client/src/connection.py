@@ -27,9 +27,9 @@ class Connection:
         self.call = call
 
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        self.packets_received = 0
         self.compression_quality = self.DEFAULT_COMPRESSION_QUALITY
-        self.packets_per_second = 0
+        self.bytes_received = 0
+        self.bps = 0
 
         self.ssrc = random.getrandbits(32)
         self.seq = random.getrandbits(16)
@@ -90,17 +90,17 @@ class Connection:
 
     def adapt_frame_quality(self):
         while self.call.running:
-            packets_received_a = self.packets_received
+            bytes_received_a = self.bytes_received
             time.sleep(self.ADAPT_FRAME_QUALITY_FREQUENCY_SECONDS)
-            packets_received_b = self.packets_received
+            bytes_received_b = self.bytes_received
 
-            new_packets_per_second = (
-                packets_received_b - packets_received_a
+            new_bps = (
+                bytes_received_b - bytes_received_a
             ) / self.ADAPT_FRAME_QUALITY_FREQUENCY_SECONDS
 
             target_compression_quality = (
                 self.MAX_COMPRESSION_QUALITY
-                if new_packets_per_second >= self.packets_per_second
+                if new_bps >= self.bps
                 else self.MIN_COMPRESSION_QUALITY
             )
 
@@ -110,7 +110,7 @@ class Connection:
                 self.SMOOTHING_COMPRESSION_FACTOR,
             )
 
-            self.packets_per_second = new_packets_per_second
+            self.bps = new_bps
             self.compression_quality = new_compression_quality
 
     def compress_frame(self, frame: np.ndarray) -> np.ndarray:
@@ -165,7 +165,7 @@ class Connection:
     def receive_packets(self):
         while self.call.running:
             data, address = self.socket.recvfrom(1500)
-            self.packets_received += 1
+            self.bytes_received += len(data) * 8
 
             if address[0] != self.SERVER_ADDRESS:
                 print(f"Ignoring data received from unexpected address: {address}")
