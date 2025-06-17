@@ -91,11 +91,23 @@ class View:
         return image
 
     def draw_analytics(self, image: np.ndarray) -> np.ndarray:
-        image = self.draw_analytics_text(image, "Test 1", 0)
+        image = self.draw_analytics_text(image, self.get_bitrate_text(), 0)
         image = self.draw_analytics_text(image, "Test 2", 1)
         image = self.draw_analytics_text(image, "Test 3", 2)
 
         return image
+
+    def get_bitrate_text(self) -> str:
+        bitrate = self.call.connection.bps
+        thousands = 0
+
+        while bitrate >= 1000 and thousands < 4:
+            bitrate /= 1000
+            thousands += 1
+
+        thousands_text = {0: "Bps", 1: "Kbps", 2: "Mbps", 3: "Gbps", 4: "Tbps"}
+
+        return str(round(bitrate)) + " " + thousands_text[thousands]
 
     def draw_analytics_text(
         self, image: np.ndarray, text: str, line: int
