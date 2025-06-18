@@ -57,10 +57,10 @@ class View:
         cv2.imshow(self.WINDOW_NAME, image)
 
     def draw_grid(self, image: np.ndarray) -> np.ndarray:
-        user_frames: list[np.ndarray] = [
-            self.cam_frame,
-            *self.connection_frames.values(),
-        ]
+        user_frames: dict[int, np.ndarray] = {
+            0: self.cam_frame,
+            **self.connection_frames,
+        }
 
         grid_len = math.ceil(math.sqrt(len(user_frames)))
 
@@ -68,13 +68,25 @@ class View:
         view_height = int(self.WINDOW_HEIGHT / grid_len)
 
         col, row = 0, 0
-        for _, user_view in enumerate(user_frames):
+        for ssrc, user_view in user_frames.items():
             if user_view is None or user_view.size == 0:
                 continue
 
             user_view = cv2.resize(
                 user_view,
                 (view_width, view_height),
+            )
+
+            user_view = cv2.putText(
+                user_view,
+                "You" if ssrc == 0 else f"User {str(ssrc)}",
+                (20, view_height - 20),
+                cv2.QT_FONT_NORMAL,
+                0.5,
+                (0, 0, 255),
+                1,
+                cv2.LINE_AA,
+                False,
             )
 
             y = view_height * row
@@ -121,16 +133,16 @@ class View:
         self, image: np.ndarray, text: str, line: int
     ) -> np.ndarray:
         indent = (20, 40)
-        line_gap = 35
+        line_gap = 30
 
         return cv2.putText(
             image,
             text,
             (indent[0], indent[1] + (line_gap * line)),
             cv2.QT_FONT_NORMAL,
-            1,
+            0.75,
             (255, 0, 0),
-            2,
+            1,
             cv2.LINE_AA,
             False,
         )
