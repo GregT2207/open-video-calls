@@ -9,9 +9,6 @@ OVC is a small personal project written for learning and demonstration purposes
 - NumPy for mathematical image operations
 - Multi-threaded network logic to avoid blocking UI
 
-### Running locally
+## Testing
 
-- Install Cargo to run or build the server
-- Install Python to run the client(s)
-
-*A small dev script is included at dev_test.py, this will launch an instance of the server and a few instances of the client*
+`docker-compose up --scale client=4` is a quick way to launch some test windows and see the project in action (requires a camera)
