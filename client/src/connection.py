@@ -35,7 +35,6 @@ class Connection:
         self.seq = random.getrandbits(16)
         self.timestamp_initial = datetime.datetime.now()
         self.timestamp_base = random.getrandbits(32)
-        self.connection_id = random.getrandbits(32)
 
         self.packet_buffers: dict[int, dict[int, RTP]] = {}  # [ssrc: [seq: packet]]
         self.frame_buffers: dict[int, deque[tuple[int, np.ndarray]]] = (

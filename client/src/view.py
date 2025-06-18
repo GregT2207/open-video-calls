@@ -91,11 +91,16 @@ class View:
         return image
 
     def draw_analytics(self, image: np.ndarray) -> np.ndarray:
-        image = self.draw_analytics_text(image, self.get_bitrate_text(), 0)
         image = self.draw_analytics_text(
             image,
-            str(round(self.call.connection.compression_quality)) + "% image quality",
-            1,
+            f"Connected to {self.call.connection.SERVER_ADDRESS}:{self.call.connection.SERVER_PORT}",
+            0,
+        )
+        image = self.draw_analytics_text(image, self.get_bitrate_text(), 1)
+        image = self.draw_analytics_text(
+            image,
+            f"{str(round(self.call.connection.compression_quality))}% image quality",
+            2,
         )
 
         return image
@@ -116,7 +121,7 @@ class View:
         self, image: np.ndarray, text: str, line: int
     ) -> np.ndarray:
         indent = (20, 40)
-        line_gap = 30
+        line_gap = 35
 
         return cv2.putText(
             image,
@@ -124,7 +129,7 @@ class View:
             (indent[0], indent[1] + (line_gap * line)),
             cv2.QT_FONT_NORMAL,
             1,
-            (0, 255, 0),
+            (255, 0, 0),
             2,
             cv2.LINE_AA,
             False,
